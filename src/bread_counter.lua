@@ -7,7 +7,7 @@ local Vector = require("lib.hump.vector")
 local Counter = require("src.base.counter")
 local ItemObject = require("src.item_object")
 
-local SteakCounter = Class {
+local BreadCounter = Class {
     __includes = Counter,
     init = function(self, position, size)
         Counter.init(self, position, size)
@@ -15,7 +15,7 @@ local SteakCounter = Class {
     end
 }
 
-function SteakCounter:draw()
+function BreadCounter:draw()
     local position_x, position_y = self.body:getPosition()
     love.graphics.setColor(1, 1, 0.5, 1)
     love.graphics.rectangle('fill', position_x - self.size.w/2, position_y - self.size.h/2, self.size.w, self.size.h)
@@ -24,15 +24,16 @@ function SteakCounter:draw()
     -- love.graphics.circle('fill', position_x, position_y, self.area_radius)
 end
 
-function SteakCounter:on_interact(player)
+function BreadCounter:on_interact(player)
     if not player:has_item_object() then
-        local steak = ItemObject(Vector(0, 0), {w = 20, h = 20}, Item.TYPES.STEAK)
-        steak.offset = Vector(0, -player.size.h/2 - 20)
-        steak.name = "Steak"
-        steak:set_object_parent(player)
+        local bread = ItemObject(Vector(0, 0), {w = 20, h = 20}, Item.TYPES.BREAD)
+        bread.offset = Vector(0, -player.size.h/2 - 20)
+        bread.name = "Bread"
+        bread:set_object_parent(player)
+        bread.color = {0, 1, 1, 1}
         
-        self.entities:add_entity(steak)
+        self.entities:add_entity(bread)
     end
 end
 
-return SteakCounter
+return BreadCounter

@@ -14,12 +14,25 @@ local Player = Class{
         self.speed = speed or 300
         self.area_radius = 40
         self.objects_in_range = {}
-        self.item_holding = nil
+        self.item_object_holding = nil
+        self.name = "Player"
     end
 }
 
-function Player:load(_world)
-    DynamicEntity.load(self, _world)
+function Player:load(_game)
+    DynamicEntity.load(self, _game)
+end
+
+function Player:has_item_object()
+    return self.item_object_holding ~= nil
+end
+
+function Player:get_item_object()
+    return self.item_object_holding
+end
+
+function Player:set_item_object(item_object)
+    self.item_object_holding = item_object
 end
 
 function Player:update(dt)
@@ -49,12 +62,3 @@ function Player:draw()
 end
 
 return Player
-
--- function player:drop_item()
---     if self.item_holding then
---         -- Remove the item from the entities list
---         self.item_holding.parent = nil
---         self.item_holding.interactable = true
---         self.item_holding = nil
---     end
--- end
