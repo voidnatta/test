@@ -5,12 +5,14 @@ local Counter = require("src.base.counter")
 local Item = require("src.item")
 local Recipe = require("src.recipe")
 
+local img_slicer_counter = love.graphics.newImage("assets/export/slicer_counter.png")
+
 local SlicerCounter = Class {
     __includes = Counter,
     init = function(self, position, size)
         Counter.init(self, position, size)
 
-        self.name = "Tomato Counter"
+        self.name = "Slicer Counter"
         self.area_radius = 40
         self.interactable = true
         self.color = {1, 1, 0, 1}
@@ -69,14 +71,12 @@ function SlicerCounter:update(dt)
 end
 
 function SlicerCounter:draw()
-    local position_x, position_y = self.body:getPosition()
-    love.graphics.setColor(self.color)
-    love.graphics.rectangle('fill', position_x - self.size.w/2, position_y - self.size.h/2, self.size.w, self.size.h)
+    Counter.draw(self)
 
     if self.is_slicing then
         love.graphics.setColor(1, 0, 0, 1)
         local normalized_time = self.slicing_timer / self.slicing_time
-        love.graphics.rectangle('fill', position_x - self.size.w/2, (position_y - self.size.h/2) - 30, normalized_time * 100, 10)
+        love.graphics.rectangle('fill', self.position.x - self.size.w/2, (self.position.y - self.size.h/2) - 30, normalized_time * 100, 10)
     end
 end
 

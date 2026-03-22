@@ -4,9 +4,16 @@ local utils = {}
 local gamepad = nil
 local gamepad_buttons_pressed = {}
 
-local function start()
+local function refresh_gamepad()
     local joysticks = love.joystick.getJoysticks()
-    gamepad = joysticks[1]
+    gamepad = nil
+
+    for _, joystick in ipairs(joysticks) do
+        if joystick:isGamepad() then
+            gamepad = joystick
+            break
+        end
+    end
 end
 
 function utils.get_axis(negative_key, positive_key, axis_name)
@@ -30,11 +37,28 @@ function utils.get_axis(negative_key, positive_key, axis_name)
 end
 
 function love.gamepadpressed(joystick, button)
+    gamepad = joystick
     gamepad_buttons_pressed[button] = true
 end
 
 function utils.update()
     gamepad_buttons_pressed = {}
+
+    if not gamepad or not gamepad:isConnected() then
+        refresh_gamepad()
+    end
+end
+
+function love.joystickadded(joystick)
+    if not gamepad and joystick:isGamepad() then
+        gamepad = joystick
+    end
+end
+
+function love.joystickremoved(joystick)
+    if gamepad == joystick then
+        refresh_gamepad()
+    end
 end
 
 function utils.gamepad_button_pressed(button)
@@ -45,5 +69,5 @@ function utils.check_radius_collision(ax, ay, bx, by, ar, br)
     return (bx - ax)^2 + (by - ay)^2 < (ar + br)^2
 end
 
-start()
+refresh_gamepad()
 return utils

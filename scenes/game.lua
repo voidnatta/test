@@ -1,5 +1,7 @@
 local love = require("love")
 
+DEBUGMODE = true
+
 Timer = require("lib.hump.timer")
 local Utils = require("src.utils")
 local Vector = require("lib.hump.vector")
@@ -18,21 +20,32 @@ local OrderCounter = require("src.order_counter")
 local CookingCounter = require("src.cooking_counter")
 local SlicingCounter = require("src.slicer_counter")
 
+local Entity = require("src.base.entity")
+
 local Game = {}
 
 local gameWidth, gameHeight = 1440, 1080 --fixed game resolution
-local windowWidth, windowHeight = love.window.getDesktopDimensions()
+local windowWidth, windowHeight = 1440, 1080
 
 windowWidth, windowHeight = windowWidth*.7, windowHeight*.7 --make the window a bit smaller than the screen itself
 
 push:setupScreen(gameWidth, gameHeight, windowWidth, windowHeight, {fullscreen = false})
+
+local img_background = love.graphics.newImage("assets/export/background.png")
+local img_wall = love.graphics.newImage("assets/export/wall.png")
+
+local img_tomato_counter = love.graphics.newImage("assets/export/tomato_counter.png")
+local img_empty_counter = love.graphics.newImage("assets/export/empty_counter.png")
+local img_slicer_counter = love.graphics.newImage("assets/export/slicer_counter.png")
+local img_plate_counter = love.graphics.newImage("assets/export/plate_counter.png")
+local img_left_counter = love.graphics.newImage("assets/export/left_counter.png")
 
 function Game:init()
     love.physics.setMeter(32)
     love.graphics.setFont(love.graphics.newFont(28))
     
     self.world = love.physics.newWorld(0, 0, true)
-    self.min_interaction_distance = 170.0
+    self.min_interaction_distance = 270.0
     self.nearest_interactable = {}
     self.distance_to_nearest = math.huge
     self.cash_amount = 50.0
@@ -69,19 +82,32 @@ function Game:init()
         Game.queue_free_list = {}
     end
 
-    self.player = Player(Vector(200, 100), {w = 100, h = 100}, 300)
+    self.player = Player(Vector(200, 100), {w = 100, h = 100}, 600)
 
-    local tomato_counter = TomatoCounter(Vector(400, 800), {w = 100, h = 100})
-    local steak_counter = SteakCounter(Vector(400, 400), {w = 100, h = 100})
+    local tomato_counter = TomatoCounter(Vector(375, 320), {w = 152, h = 165})
+    tomato_counter.sprite = img_tomato_counter
+
+    local slicing_counter = SlicingCounter(Vector(1200, 100), {w = 152, h = 250})
+    slicing_counter.sprite = img_slicer_counter
+    
+    local empty_counter = EmptyCounter(Vector(600, 400), {w = 152, h = 250})
+    empty_counter.sprite = img_empty_counter
+
+    local empty_counter2 = EmptyCounter(Vector(800, 400), {w = 152, h = 250})
+    empty_counter2.sprite = img_empty_counter
+
+    local plate_counter = PlateCounter(Vector(1000, 400), {w = 152, h = 250})
+    plate_counter.sprite = img_plate_counter
+
+    local steak_counter = SteakCounter(Vector(425, 420), {w = 100, h = 100})
+
+    local left_counter = Entity(Vector(143, 630), {w = 287, h = 900})
+    left_counter.sprite = img_left_counter
+
     local bread_counter = BreadCounter(Vector(800, 100), {w = 100, h = 100})
     local cheese_counter = CheeseCounter(Vector(600, 100), {w = 100, h = 100})
-
-    local empty_counter = EmptyCounter(Vector(600, 400), {w = 100, h = 100})
-    local empty_counter2 = EmptyCounter(Vector(800, 400), {w = 100, h = 100})
-    local plate_counter = PlateCounter(Vector(1000, 400), {w = 100, h = 100})
     local order_counter = OrderCounter(Vector(1400, 400), {w = 100, h = 100})
     local cooking_counter = CookingCounter(Vector(1000, 100), {w = 100, h = 100})
-    local slicing_counter = SlicingCounter(Vector(1200, 100), {w = 100, h = 100})
 
     self.entities:add_entity(self.player)
     self.entities:add_entity(tomato_counter)
@@ -91,20 +117,25 @@ function Game:init()
 
     self.entities:add_entity(empty_counter)
     self.entities:add_entity(empty_counter2)
+    self.entities:add_entity(left_counter)
+
     self.entities:add_entity(plate_counter)
     self.entities:add_entity(order_counter)
     self.entities:add_entity(cooking_counter)
     self.entities:add_entity(slicing_counter)
 
-    Timer.every(5, function ()
+    Timer.every(1, function ()
         self:decrease_cash(5.0)
         print("Tax baby")
     end)
 
-    -- credits CoffeeBlack by GrimFrenzy 
-    self.background_music = love.audio.newSource("music/CoffeeBlack.ogg", "stream")
-    self.background_music:setVolume(0.1)
-    self.background_music:play()
+    -- credits Hotel 2 by migfus20
+    if not DEBUGMODE then
+        self.background_music = love.audio.newSource("music/hotel_2.mp3", "stream")
+        self.background_music:setVolume(0.2)
+        self.background_music:play()
+        self.background_music:setLooping(true)
+    end
 end
 
 function Game:update(dt)
@@ -188,6 +219,9 @@ function Game:draw()
 end
 
 function Game:_draw_game()
+    love.graphics.draw(img_background, 0, 0)
+    love.graphics.draw(img_wall, 0, 0)
+
     for _, entity in ipairs(self.entities) do
         entity:draw()
     end
@@ -208,8 +242,15 @@ function Game:_draw_game()
     love.graphics.setFont(love.graphics.newFont(34))
     love.graphics.print("Cash " .. "$ " .. string.format("%.2f", self.cash_amount), 10, 30)
     
-    -- love.graphics.setColor(1, 1, 1, .9)
-    -- love.graphics.rectangle('fill', 5, 550, 320, 40)
+    if DEBUGMODE then
+        local mouse_pos_x, mouse_pos_y = push:toGame(love.mouse.getX(), love.mouse.getY())
+        
+        love.graphics.setColor(0, 0, 0, 1)
+        love.graphics.rectangle('fill', mouse_pos_x + 25, mouse_pos_y, 320, 40)
+
+        love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.print(string.format("%.2f", mouse_pos_x) .. ", " .. string.format("%.2f", mouse_pos_y), mouse_pos_x + 25, mouse_pos_y)
+    end
     
     -- love.graphics.setColor(0, 0, 0, 1)
     -- love.graphics.print('Memory actually used (in Mb): ' .. string.format("%.2f", collectgarbage('count') / 1000.0) , 10, 560)

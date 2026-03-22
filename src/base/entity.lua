@@ -12,6 +12,7 @@ local Entity = Class{
         self.color = {1, 0, 0, 1}
         self.parent = nil
         self.name = "Entity"
+        self.sprite = nil
     end;
     
     load = function(self, game)
@@ -24,7 +25,14 @@ local Entity = Class{
     end;
     
     draw = function(self)
-        -- to be overridden by subclasses
+        if self.sprite then
+            love.graphics.setColor(1, 1, 1, 1)
+            love.graphics.draw(self.sprite, self.position.x - self.size.w / 2, self.position.y - self.size.h / 2, 0.0, 
+            self.size.w / self.sprite:getWidth(), self.size.h / self.sprite:getHeight())
+        else
+            love.graphics.setColor(self.color)
+            love.graphics.rectangle('fill', self.position.x - self.size.w/2, self.position.y - self.size.h/2, self.size.w, self.size.h)
+        end
     end;
 
     on_interact = function(self, player)

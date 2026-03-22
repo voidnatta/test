@@ -16,9 +16,13 @@ local TomatoCounter = Class {
 }
 
 function TomatoCounter:draw()
-    local position_x, position_y = self.body:getPosition()
-    love.graphics.setColor(1, 1, 0.5, 1)
-    love.graphics.rectangle('fill', position_x - self.size.w/2, position_y - self.size.h/2, self.size.w, self.size.h)
+    Counter.draw(self)
+
+    -- local position_x, position_y = self.body:getPosition()
+    
+    -- love.graphics.setColor(1, 1, 1, 1)
+    -- love.graphics.draw(img_tomato_counter, position_x - self.size.w / 2, position_y - self.size.h / 2, 0.0, 
+    -- self.size.w / img_tomato_counter:getWidth(), self.size.h / img_tomato_counter:getHeight())
 
     -- love.graphics.setColor(1, 0.5, 0.5, 0.2)
     -- love.graphics.circle('fill', position_x, position_y, self.area_radius)

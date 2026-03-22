@@ -69,9 +69,7 @@ function CookingCounter:update(dt)
 end
 
 function CookingCounter:draw()
-    local position_x, position_y = self.body:getPosition()
-    love.graphics.setColor(self.color)
-    love.graphics.rectangle('fill', position_x - self.size.w/2, position_y - self.size.h/2, self.size.w, self.size.h)
+    Counter.draw(self)
 
     if self.is_cooking then
         love.graphics.setColor(1, 0, 0, 1)

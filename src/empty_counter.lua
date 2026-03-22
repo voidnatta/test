@@ -5,6 +5,8 @@ local Counter = require("src.base.counter")
 local Item = require("src.item")
 local Recipe = require("src.recipe")
 
+local img_empty_counter = love.graphics.newImage("assets/export/empty_counter.png")
+
 local EmptyCounter = Class {
     __includes = Counter,
     init = function(self, position, size)
@@ -61,12 +63,7 @@ function EmptyCounter:on_interact(player)
 end
 
 function EmptyCounter:draw()
-    local position_x, position_y = self.body:getPosition()
-    love.graphics.setColor(1, 0.5, 0.5, 1)
-    love.graphics.rectangle('fill', position_x - self.size.w/2, position_y - self.size.h/2, self.size.w, self.size.h)
-    
-    -- love.graphics.setColor(1, 0.5, 0.5, 0.2)
-    -- love.graphics.circle('fill', position_x + self.size.w/2, position_y + self.size.h/2, self.area_radius)
+    Counter.draw(self)
 end
 
 return EmptyCounter

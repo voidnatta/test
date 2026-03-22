@@ -16,6 +16,7 @@ local Player = Class{
         self.objects_in_range = {}
         self.item_object_holding = nil
         self.name = "Player"
+        self.color = {1, 1, 1, 1}
     end
 }
 
@@ -54,9 +55,8 @@ function Player:update(dt)
 end
 
 function Player:draw()
-    local position_x, position_y = self.body:getPosition()
-    love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.rectangle('fill', position_x - self.size.w/2, position_y - self.size.h/2, self.size.w, self.size.h)
+    DynamicEntity.draw(self)
+
     -- love.graphics.setColor(0, 1, 1, 0.2)
     -- love.graphics.circle('fill', position_x, position_y, self.area_radius)
 end
