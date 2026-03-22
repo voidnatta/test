@@ -16,8 +16,6 @@ local EmptyCounter = Class {
     end
 }
 
--- 
-
 function EmptyCounter:on_interact(player)
     if self:has_item_object() and player:has_item_object() then
         local a = player:get_item_object()
@@ -39,16 +37,8 @@ function EmptyCounter:on_interact(player)
         if container.items and #container.items <= container.max_items then
             table.insert(container.items, {
                 type = content.type,
-                state = container.state
+                state = content.state
             })
-
-            -- local result = Recipe:try_craft(container.items)
-            -- if result then
-            --     container.items = {
-            --         {type = result}
-            --     }
-            --     print("Result ", result)
-            -- end
 
             content:queue_free()
             content:set_object_parent(nil)

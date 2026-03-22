@@ -1,29 +1,121 @@
 local Item = require("src.item")
+local Recipe = {}
+
+Recipe.RECIPES_TYPES = {
+    COOKED_STEAK = "COOKED_STEAK",
+
+    BURGER = "BURGER",
+    DOUBLE_BURGER = "DOUBLE_BURGER",
+
+    SLICED_TOMATO = "SLICED_TOMATO",
+    CHEESE_SLICE = "CHEESE_SLICE",
+
+    CHEESEBURGER = "CHEESEBURGER",
+    TOMATO_BURGER = "TOMATO_BURGER",
+    FULL_BURGER = "FULL_BURGER",
+    DOUBLE_CHEESEBURGER = "DOUBLE_CHEESEBURGER",
+
+    STEAK_WITH_TOMATO = "STEAK_WITH_TOMATO",
+    CHEESE_STEAK = "CHEESE_STEAK",
+    TOMATO_CHEESE = "TOMATO_CHEESE",
+}
 
 local RECIPES = {
-    [Item.TYPES.COOKED_STEAK] = {
+    [Recipe.RECIPES_TYPES.COOKED_STEAK] = {
         ingredients = {
             {type = Item.TYPES.STEAK, state = {cooked = true}}
         }
     },
-    [Item.TYPES.BURGER] = {
+
+    [Recipe.RECIPES_TYPES.BURGER] = {
         ingredients = {
             {type = Item.TYPES.BREAD},
             {type = Item.TYPES.STEAK, state = {cooked = true}},
             {type = Item.TYPES.BREAD},
         }
     },
-    [Item.TYPES.DOUBLE_BURGER] = {
+
+    [Recipe.RECIPES_TYPES.DOUBLE_BURGER] = {
         ingredients = {
             {type = Item.TYPES.BREAD},
             {type = Item.TYPES.STEAK, state = {cooked = true}},
             {type = Item.TYPES.STEAK, state = {cooked = true}},
             {type = Item.TYPES.BREAD},
+        }
+    },
+
+    [Recipe.RECIPES_TYPES.SLICED_TOMATO] = {
+        ingredients = {
+            {type = Item.TYPES.TOMATO, state = {sliced = true}}
+        }
+    },
+
+    [Recipe.RECIPES_TYPES.CHEESE_SLICE] = {
+        ingredients = {
+            {type = Item.TYPES.CHEESE, state = {sliced = true}}
+        }
+    },
+
+    [Recipe.RECIPES_TYPES.CHEESEBURGER] = {
+        ingredients = {
+            {type = Item.TYPES.BREAD},
+            {type = Item.TYPES.STEAK, state = {cooked = true}},
+            {type = Item.TYPES.CHEESE},
+            {type = Item.TYPES.BREAD},
+        }
+    },
+
+    [Recipe.RECIPES_TYPES.TOMATO_BURGER] = {
+        ingredients = {
+            {type = Item.TYPES.BREAD},
+            {type = Item.TYPES.STEAK, state = {cooked = true}},
+            {type = Item.TYPES.TOMATO, state = {sliced = true}},
+            {type = Item.TYPES.BREAD},
+        }
+    },
+
+    [Recipe.RECIPES_TYPES.FULL_BURGER] = {
+        ingredients = {
+            {type = Item.TYPES.BREAD},
+            {type = Item.TYPES.STEAK, state = {cooked = true}},
+            {type = Item.TYPES.CHEESE},
+            {type = Item.TYPES.TOMATO, state = {sliced = true}},
+            {type = Item.TYPES.BREAD},
+        }
+    },
+
+    [Recipe.RECIPES_TYPES.DOUBLE_CHEESEBURGER] = {
+        ingredients = {
+            {type = Item.TYPES.BREAD},
+            {type = Item.TYPES.STEAK, state = {cooked = true}},
+            {type = Item.TYPES.CHEESE},
+            {type = Item.TYPES.STEAK, state = {cooked = true}},
+            {type = Item.TYPES.CHEESE},
+            {type = Item.TYPES.BREAD},
+        }
+    },
+
+    [Recipe.RECIPES_TYPES.STEAK_WITH_TOMATO] = {
+        ingredients = {
+            {type = Item.TYPES.STEAK, state = {cooked = true}},
+            {type = Item.TYPES.TOMATO, state = {sliced = true}},
+        }
+    },
+
+    [Recipe.RECIPES_TYPES.CHEESE_STEAK] = {
+        ingredients = {
+            {type = Item.TYPES.STEAK, state = {cooked = true}},
+            {type = Item.TYPES.CHEESE},
+        }
+    },
+
+    [Recipe.RECIPES_TYPES.TOMATO_CHEESE] = {
+        ingredients = {
+            {type = Item.TYPES.TOMATO, state = {sliced = true}},
+            {type = Item.TYPES.CHEESE},
         }
     },
 }
-
-local Recipe = {}
 
 function Recipe:get_recipes()
     return RECIPES

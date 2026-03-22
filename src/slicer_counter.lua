@@ -1,0 +1,83 @@
+local love = require("love")
+
+local Class = require("lib.hump.class")
+local Counter = require("src.base.counter")
+local Item = require("src.item")
+local Recipe = require("src.recipe")
+
+local SlicerCounter = Class {
+    __includes = Counter,
+    init = function(self, position, size)
+        Counter.init(self, position, size)
+
+        self.name = "Tomato Counter"
+        self.area_radius = 40
+        self.interactable = true
+        self.color = {1, 1, 0, 1}
+        self.is_slicing = false
+        self.slicing_time = 1.0
+        self.slicing_timer = 0.0
+    end
+}
+
+function SlicerCounter:on_interact(player)
+    if self.is_slicing then
+        print("Still slicing...")
+        return
+    end
+
+    if player:has_item_object() then
+        local item_obj = player:get_item_object()
+
+        if item_obj:can_be_contained() then
+            item_obj:set_object_parent(self)
+            self.is_slicing = true
+            self.slicing_timer = self.slicing_time
+
+            Timer.after(self.slicing_time, function ()
+                item_obj.state.sliced = true
+                self.is_slicing = false
+                self.slicing_timer = 0.0
+            end)
+        else
+            if #item_obj.items == 1 then
+                item_obj:set_object_parent(self)
+                self.is_slicing = true
+                self.slicing_timer = self.slicing_time
+                
+                Timer.after(self.slicing_time, function ()
+                    item_obj.items[1].state.sliced = true
+                    self.is_slicing = false
+                    self.slicing_timer = 0.0
+                end)
+            else
+                print("Only one item to be able to cook with plate")
+            end
+        end
+
+    elseif self:has_item_object() then
+        self:get_item_object():set_object_parent(player)
+    else
+        print("Nothing to slice")
+    end
+end
+
+function SlicerCounter:update(dt) 
+    if self.is_slicing then
+        self.slicing_timer = self.slicing_timer - dt
+    end
+end
+
+function SlicerCounter:draw()
+    local position_x, position_y = self.body:getPosition()
+    love.graphics.setColor(self.color)
+    love.graphics.rectangle('fill', position_x - self.size.w/2, position_y - self.size.h/2, self.size.w, self.size.h)
+
+    if self.is_slicing then
+        love.graphics.setColor(1, 0, 0, 1)
+        local normalized_time = self.slicing_timer / self.slicing_time
+        love.graphics.rectangle('fill', position_x - self.size.w/2, (position_y - self.size.h/2) - 30, normalized_time * 100, 10)
+    end
+end
+
+return SlicerCounter

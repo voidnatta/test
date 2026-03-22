@@ -12,10 +12,7 @@ Item.TYPES = {
     TOMATO = "TOMATO",
     STEAK = "STEAK",
     BREAD = "BREAD",
-    SANDWICH = "SANDWICH",
-    BURGER = "BURGER",
-    DOUBLE_BURGER = "DOUBLE_BURGER",
-    COOKED_STEAK = "COOKED_STEAK"
+    CHEESE = "CHEESE"
 }
 
 return Item

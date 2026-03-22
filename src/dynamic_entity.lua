@@ -15,12 +15,12 @@ local DynamicEntity = Class{
         self.body_type = body_type or "dynamic"
     end,
     load = function(self, game)
+        Entity.load(self, game)
         self.body = love.physics.newBody(game.world, self.position.x, self.position.y, self.body_type)
         self.shape = love.physics.newRectangleShape(self.size.w, self.size.h)
         self.fixture = love.physics.newFixture(self.body, self.shape)
     ---@diagnostic disable-next-line: undefined-field
         self.body:setFixedRotation(true)
-        self.entities = game.entities
     end,
     update = function(self, dt)
         -- to be overridden by subclasses

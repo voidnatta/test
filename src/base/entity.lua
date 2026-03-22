@@ -15,6 +15,7 @@ local Entity = Class{
     end;
     
     load = function(self, game)
+        self.game = game.game
         self.entities = game.entities
     end;
     

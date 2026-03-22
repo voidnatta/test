@@ -1,6 +1,6 @@
 local love = require("love")
 
-local GameState = require("lib.hump.gamestate")
+GameState = require("lib.hump.gamestate")
 
 -- scenes
 local Game = require("scenes.game")
