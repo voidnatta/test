@@ -9,8 +9,8 @@ local img_slicer_counter = love.graphics.newImage("assets/export/slicer_counter.
 
 local SlicerCounter = Class {
     __includes = Counter,
-    init = function(self, position, size)
-        Counter.init(self, position, size)
+    init = function(self, position)
+        Counter.init(self, position)
 
         self.name = "Slicer Counter"
         self.area_radius = 40
@@ -35,6 +35,10 @@ function SlicerCounter:on_interact(player)
             item_obj:set_object_parent(self)
             self.is_slicing = true
             self.slicing_timer = self.slicing_time
+            -- play slicing sound
+            local slicing_sound = love.audio.newSource("assets/sfx/qubodupItemHandling1.wav", "static")
+            slicing_sound:setVolume(0.5)
+            slicing_sound:play()
 
             Timer.after(self.slicing_time, function ()
                 item_obj.state.sliced = true
@@ -46,6 +50,10 @@ function SlicerCounter:on_interact(player)
                 item_obj:set_object_parent(self)
                 self.is_slicing = true
                 self.slicing_timer = self.slicing_time
+
+                local slicing_sound = love.audio.newSource("assets/sfx/qubodupItemHandling1.wav", "static")
+                slicing_sound:setVolume(0.5)
+                slicing_sound:play()
                 
                 Timer.after(self.slicing_time, function ()
                     item_obj.items[1].state.sliced = true
@@ -59,6 +67,11 @@ function SlicerCounter:on_interact(player)
 
     elseif self:has_item_object() then
         self:get_item_object():set_object_parent(player)
+
+        local slicing_sound = love.audio.newSource("assets/sfx/qubodupItemHandling1.wav", "static")
+        slicing_sound:setVolume(0.5)
+        slicing_sound:setPitch(0.7)
+        slicing_sound:play()
     else
         print("Nothing to slice")
     end
@@ -76,7 +89,7 @@ function SlicerCounter:draw()
     if self.is_slicing then
         love.graphics.setColor(1, 0, 0, 1)
         local normalized_time = self.slicing_timer / self.slicing_time
-        love.graphics.rectangle('fill', self.position.x - self.size.w/2, (self.position.y - self.size.h/2) - 30, normalized_time * 100, 10)
+        love.graphics.rectangle('fill', self.position.x - self.size.x/2, (self.position.y - self.size.y/2) - 30, normalized_time * 100, 10)
     end
 end
 

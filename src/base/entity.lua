@@ -4,34 +4,44 @@ local Class = require("lib.hump.class")
 local Vector = require("lib.hump.vector")
 
 local Entity = Class{
-    init = function (self, position, size)
+    init = function (self, position)
         self.position = position or Vector(0, 0)
-        self.size = size or Vector(100, 100)
+        self.size = Vector(100, 100)
         self.interactable = false
         self.offset = Vector(0, 0)
         self.color = {1, 0, 0, 1}
         self.parent = nil
         self.name = "Entity"
         self.sprite = nil
+        self.z_order = 0
     end;
     
     load = function(self, game)
         self.game = game.game
         self.entities = game.entities
+        self:set_size_based_on_sprite()
+
     end;
     
     update = function(self, dt)
         -- to be overridden by subclasses
     end;
+
+    set_size_based_on_sprite = function(self)
+        if self.sprite then
+            self.size = Vector(self.sprite:getWidth(), self.sprite:getHeight())
+        end
+    end; 
     
     draw = function(self)
         if self.sprite then
             love.graphics.setColor(1, 1, 1, 1)
-            love.graphics.draw(self.sprite, self.position.x - self.size.w / 2, self.position.y - self.size.h / 2, 0.0, 
-            self.size.w / self.sprite:getWidth(), self.size.h / self.sprite:getHeight())
+            love.graphics.draw(self.sprite, self.position.x - self.size.x / 2, self.position.y - self.size.y / 2, 0.0, 
+            self.size.x / self.sprite:getWidth(), self.size.y / self.sprite:getHeight())
         else
+            if not DEBUGMODE then return end
             love.graphics.setColor(self.color)
-            love.graphics.rectangle('fill', self.position.x - self.size.w/2, self.position.y - self.size.h/2, self.size.w, self.size.h)
+            love.graphics.rectangle('fill', self.position.x - self.size.x/2, self.position.y - self.size.y/2, self.size.x, self.size.y)
         end
     end;
 

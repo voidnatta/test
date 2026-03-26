@@ -1,113 +1,217 @@
 local love = require("love")
 
 DEBUGMODE = true
+DESIGNMODE = true
+
+GAME_WIDTH, GAME_HEIGHT = 1440, 1080 --fixed game resolution
+WINDOW_WIDTH, WINDOW_HEIGHT = 1440, 1080
+LEVEL_DESIGN_MOVE_SPEED = 200
+MIN_INTERACTION_DISTANCE = 270.0
+DAY_DURATION_SECONDS = 100
+RECIPE_START_EXPIRE_TIME = 35.0
+
+WINDOW_WIDTH, WINDOW_HEIGHT = WINDOW_WIDTH*.7, WINDOW_HEIGHT*.7
 
 Timer = require("lib.hump.timer")
-local Utils = require("src.utils")
+Push = require ("lib.push.push")
+
 local Vector = require("lib.hump.vector")
+local Utils = require("src.utils")
 
-local push = require ("lib.push.push")
+local Entities = require("src.systems.entities")
+local DesignMode = require("src.debug.designmode")
+local assets = require("src.assets")
 
+local game_gui = require("src.gui.game_gui")
+
+-- Scenes
+local DayEnd = require("scenes.day_end")
+
+-- Entities
+local Entity = require("src.base.entity")
+local DynamicEntity = require("src.dynamic_entity")
 local Player = require("src.player")
 local SteakCounter = require("src.steak_counter")
 local BreadCounter = require("src.bread_counter")
 local TomatoCounter = require("src.tomato_counter")
 local CheeseCounter = require("src.cheese_counter")
-
 local EmptyCounter = require("src.empty_counter")
 local PlateCounter = require("src.plate_counter")
 local OrderCounter = require("src.order_counter")
 local CookingCounter = require("src.cooking_counter")
 local SlicingCounter = require("src.slicer_counter")
 
-local Entity = require("src.base.entity")
+local Recipe = require("src.recipe")
 
 local Game = {}
 
-local gameWidth, gameHeight = 1440, 1080 --fixed game resolution
-local windowWidth, windowHeight = 1440, 1080
+local function lerp(current, target, t)
+    return current + (target - current) * t
+end
 
-windowWidth, windowHeight = windowWidth*.7, windowHeight*.7 --make the window a bit smaller than the screen itself
-
-push:setupScreen(gameWidth, gameHeight, windowWidth, windowHeight, {fullscreen = false})
-
-local img_background = love.graphics.newImage("assets/export/background.png")
-local img_wall = love.graphics.newImage("assets/export/wall.png")
-
-local img_tomato_counter = love.graphics.newImage("assets/export/tomato_counter.png")
-local img_empty_counter = love.graphics.newImage("assets/export/empty_counter.png")
-local img_slicer_counter = love.graphics.newImage("assets/export/slicer_counter.png")
-local img_plate_counter = love.graphics.newImage("assets/export/plate_counter.png")
-local img_left_counter = love.graphics.newImage("assets/export/left_counter.png")
-
-function Game:init()
+function Game:init(initial_state)
     love.physics.setMeter(32)
-    love.graphics.setFont(love.graphics.newFont(28))
+    love.graphics.setFont(love.graphics.newFont(34))
+
+    Push:setupScreen(GAME_WIDTH, GAME_HEIGHT, WINDOW_WIDTH, WINDOW_HEIGHT, {fullscreen = false})
     
     self.world = love.physics.newWorld(0, 0, true)
-    self.min_interaction_distance = 270.0
+    self.entities = Entities.new(self, self.world)
+    self.designmode = DesignMode.new(self)
+
     self.nearest_interactable = {}
     self.distance_to_nearest = math.huge
-    self.cash_amount = 50.0
+    self.interact_prompt = {
+        x = GAME_WIDTH / 2,
+        y = GAME_HEIGHT / 2,
+        alpha = 0.0,
+        width = 48,
+        height = 48,
+        corner_radius = 8,
+        font = love.graphics.newFont(32),
+        position_lerp_speed = 20.0,
+        alpha_lerp_speed = 15.0
+    }
 
-    self.queue_free_list = {} -- store entities to later delete
-    self.entities = {}
-    self.entities.add_entity = function(self, entity)
-        table.insert(self, entity)
-        entity:load({world = Game.world, entities = self, game = Game})
-    end
-    self.entities.add_to_queue_free_list = function(self, entity)
-        table.insert(Game.queue_free_list, entity)
-    end
-    self.entities.queue_free_list_update = function(self)
-        if #Game.queue_free_list == 0 then
-            return
-        end
+    self.day_number = (initial_state and initial_state.day_number) or 1
+    self.cash_amount = (initial_state and initial_state.cash_amount) or 50.0
+    self.day_duration = DAY_DURATION_SECONDS
+    self.day_time_left = self.day_duration
+    self.day_transitioning = false
+    self.order_spawn_timer = 12.0
+    self.recipe_expire_time = RECIPE_START_EXPIRE_TIME
+    self.can_get_new_order = false
+    self.show_play_screen = false
+    self.paused = false
 
-        -- destroy queued entities first, then remove from active list
-        for _, qe in ipairs(Game.queue_free_list) do
-            if qe.destroy then
-                qe:destroy()
-            end
-
-            for i, e in ipairs(self) do
-                if e == qe then
-                    table.remove(self, i)
-                    break
-                end
-            end
-        end
-
-        -- clear the queue
-        Game.queue_free_list = {}
-    end
-
-    self.player = Player(Vector(200, 100), {w = 100, h = 100}, 600)
-
-    local tomato_counter = TomatoCounter(Vector(375, 320), {w = 152, h = 165})
-    tomato_counter.sprite = img_tomato_counter
-
-    local slicing_counter = SlicingCounter(Vector(1200, 100), {w = 152, h = 250})
-    slicing_counter.sprite = img_slicer_counter
+    game_gui:load(self)
     
-    local empty_counter = EmptyCounter(Vector(600, 400), {w = 152, h = 250})
-    empty_counter.sprite = img_empty_counter
+    self:_spawn_game_entities()
 
-    local empty_counter2 = EmptyCounter(Vector(800, 400), {w = 152, h = 250})
-    empty_counter2.sprite = img_empty_counter
+    self.order_spawn_timer = self:_get_order_spawn_interval()
+end
 
-    local plate_counter = PlateCounter(Vector(1000, 400), {w = 152, h = 250})
-    plate_counter.sprite = img_plate_counter
+function Game:enter(_previous_state, state)
+    if not state then
+        return
+    end
+    
+    if state.show_play_screen then
+        self.show_play_screen = true
+        self.paused = true
+        return
+    end
 
-    local steak_counter = SteakCounter(Vector(425, 420), {w = 100, h = 100})
+    if not state.should_reset and not state.next_day_state then
+        return
+    end
 
-    local left_counter = Entity(Vector(143, 630), {w = 287, h = 900})
-    left_counter.sprite = img_left_counter
+    -- Reset all scheduled callbacks from the previous run before rebuilding state.
+    Timer.clear()
 
-    local bread_counter = BreadCounter(Vector(800, 100), {w = 100, h = 100})
-    local cheese_counter = CheeseCounter(Vector(600, 100), {w = 100, h = 100})
-    local order_counter = OrderCounter(Vector(1400, 400), {w = 100, h = 100})
-    local cooking_counter = CookingCounter(Vector(1000, 100), {w = 100, h = 100})
+    if state.should_reset then
+        self:init()
+        return
+    end
+
+    self:init(state.next_day_state)
+end
+
+function Game:start_the_game()
+    self.paused = false
+    -- self.show_play_screen = false
+    Timer.tween(0.7, game_gui, {background_alpha = 0.0}, 'out-cubic')
+    Timer.tween(0.7, game_gui.play_button, {y = GAME_HEIGHT + 200}, 'out-cubic', function ()
+        self.show_play_screen = false
+    end)
+    Timer.tween(0.7, game_gui.day_gui, {y = 20}, 'out-cubic')
+    Timer.tween(0.7, game_gui.order_gui_offset, {y = 20}, 'out-cubic')
+end
+
+function Game:_spawn_game_entities()
+    self.player = Player(Vector(GAME_WIDTH / 2, (GAME_HEIGHT / 2) + 100.0), 600)
+
+    local tomato_counter = TomatoCounter(Vector(1199.00, 988.00), {w = 152, h = 165})
+    tomato_counter.sprite = assets.IMAGES.img_tomato_counter
+    tomato_counter.z_order = 4
+
+    local slicing_counter = SlicingCounter(Vector(664.00, 304), {w = 152, h = 250})
+    slicing_counter.sprite = assets.IMAGES.img_slicer_counter
+    slicing_counter.override_position = Vector(658, 262)
+    slicing_counter.custom_shape_size = Vector(100, 10)
+
+    local empty_counter = EmptyCounter(Vector(945, 304), {w = 152, h = 250})
+    empty_counter.sprite = assets.IMAGES.img_empty_counter
+    empty_counter.override_position = Vector(945, 265)
+    empty_counter.custom_shape_size = Vector(100, 10)
+
+    local empty_counter_bottom = EmptyCounter(Vector(857.00, 1007.00), {w = 152, h = 250})
+    -- empty_counter_bottom.placement_offset = Vector(0, -70)
+    -- empty_counter_bottom.interact_gui_offset = Vector(-30, -35)
+    
+    local empty_counter_bottom2 = EmptyCounter(Vector(347.00, 1007.00), {w = 152, h = 250})
+    empty_counter_bottom2.placement_offset = Vector(0, -70)
+    -- empty_counter_bottom2.interact_gui_offset = Vector(-30, 25)
+    
+    local empty_counter_bottom3 = EmptyCounter(Vector(688.00, 1007.00), {w = 152, h = 250})
+    empty_counter_bottom3.placement_offset = Vector(0, -70)
+
+    local plate_counter = PlateCounter(Vector(805, 304), {w = 152, h = 250})
+    plate_counter.sprite = assets.IMAGES.img_plate_counter
+    plate_counter.custom_shape_size = Vector(100, 10)
+    
+    local steak_counter = SteakCounter(Vector(508.45, 271), {w = assets.IMAGES.img_steak_counter:getWidth(), h = assets.IMAGES.img_steak_counter:getHeight()})
+    steak_counter.sprite = assets.IMAGES.img_steak_counter
+    steak_counter.custom_shape_size = Vector(100, 10)
+
+    self.order_counter = OrderCounter(Vector(1090, 252), {w = assets.IMAGES.img_order_counter:getWidth(), h = assets.IMAGES.img_order_counter:getHeight()})
+    self.order_counter.sprite = assets.IMAGES.img_order_counter
+    self.order_counter.custom_shape_size = Vector(100, 10)
+
+    local left_counter = Entity(Vector(assets.IMAGES.img_left_counter:getWidth() / 2, assets.IMAGES.img_left_counter:getHeight() / 2),
+    {w = assets.IMAGES.img_left_counter:getWidth(), h = assets.IMAGES.img_left_counter:getHeight()})
+    left_counter.sprite = assets.IMAGES.img_left_counter
+
+    local right_counter = Entity(Vector(719.14, 534.73),
+    {w = assets.IMAGES.img_right_counter:getWidth(), h = assets.IMAGES.img_right_counter:getHeight()})
+    right_counter.sprite = assets.IMAGES.img_right_counter
+
+    local bottom_counter = Entity(Vector(590, 940),
+    {w = assets.IMAGES.img_bottom_counter:getWidth(), h = assets.IMAGES.img_bottom_counter:getHeight()})
+    bottom_counter.sprite = assets.IMAGES.img_bottom_counter
+    bottom_counter.z_order = 5
+
+    local bread_counter = BreadCounter(Vector(1036.00, 990.00), {w = assets.IMAGES.img_bread_counter:getWidth(), h = assets.IMAGES.img_bread_counter:getHeight()})
+    bread_counter.sprite = assets.IMAGES.img_bread_counter
+    bread_counter.z_order = 2
+
+    local cheese_counter = CheeseCounter(Vector(353, 271), {w = assets.IMAGES.img_cheese_counter:getWidth(), h = assets.IMAGES.img_cheese_counter:getHeight()})
+    cheese_counter.sprite = assets.IMAGES.img_cheese_counter
+    cheese_counter.custom_shape_size = Vector(100, 10)
+
+    local cooking_counter = CookingCounter(Vector(528.00, 1007.00), {w = assets.IMAGES.img_cook_counter:getWidth(), h = assets.IMAGES.img_cook_counter:getHeight()})
+    cooking_counter.sprite = assets.IMAGES.img_cook_counter
+    cooking_counter.z_order = 6
+    cooking_counter.override_position = Vector(528, 1005)
+    -- cooking_counter.interact_gui_offset = Vector(-30, 25)
+
+    -- collisions
+    local bottom_center = DynamicEntity(Vector(GAME_WIDTH / 2, GAME_HEIGHT - 200), "static")
+    bottom_center.custom_shape_size = Vector(GAME_WIDTH, 50)
+
+    local left_border = DynamicEntity(Vector(200, GAME_HEIGHT / 2), "static")
+    left_border.custom_shape_size = Vector(50, GAME_HEIGHT)
+
+    local right_border = DynamicEntity(Vector(GAME_WIDTH - 200, GAME_HEIGHT / 2), "static")
+    right_border.custom_shape_size = Vector(50, GAME_HEIGHT)
+
+    local top_border = DynamicEntity(Vector(GAME_WIDTH / 2, 330), "static")
+    top_border.custom_shape_size = Vector(GAME_WIDTH, 50)
+
+    self.entities:add_entity(bottom_center)
+    self.entities:add_entity(left_border)
+    self.entities:add_entity(right_border)
+    self.entities:add_entity(top_border)
 
     self.entities:add_entity(self.player)
     self.entities:add_entity(tomato_counter)
@@ -116,39 +220,124 @@ function Game:init()
     self.entities:add_entity(cheese_counter)
 
     self.entities:add_entity(empty_counter)
-    self.entities:add_entity(empty_counter2)
+    self.entities:add_entity(empty_counter_bottom)
+    self.entities:add_entity(empty_counter_bottom2)
+    self.entities:add_entity(empty_counter_bottom3)
     self.entities:add_entity(left_counter)
+    self.entities:add_entity(right_counter)
+    self.entities:add_entity(bottom_counter)
 
     self.entities:add_entity(plate_counter)
-    self.entities:add_entity(order_counter)
+    self.entities:add_entity(self.order_counter)
     self.entities:add_entity(cooking_counter)
     self.entities:add_entity(slicing_counter)
+end
 
-    Timer.every(1, function ()
-        self:decrease_cash(5.0)
-        print("Tax baby")
-    end)
+function Game:start_spawning_order()
+    self.order_spawn_timer = 2.0
+end
 
-    -- credits Hotel 2 by migfus20
-    if not DEBUGMODE then
-        self.background_music = love.audio.newSource("music/hotel_2.mp3", "stream")
-        self.background_music:setVolume(0.2)
-        self.background_music:play()
-        self.background_music:setLooping(true)
+function Game:_get_order_spawn_interval()
+    local base_interval = 12.0
+    local day_penalty = (self.day_number - 1) * 0.6
+    return math.max(6.0, base_interval - day_penalty)
+end
+
+function Game:_spawn_random_order()
+    if not self.order_counter then
+        return
+    end
+
+    if not self.can_get_new_order then
+         return
+    end
+
+    if #self.order_counter.orders >= 4 then
+        local min_reward = 3.0
+        local max_reward = 6.0
+        local _penalty = min_reward + math.random() * (max_reward - min_reward)
+
+        self:apply_penalty(_penalty)
+        return
+    end
+
+    local recipes = Recipe:get_recipes()
+    local keyset = {}
+    for k in pairs(recipes) do
+        table.insert(keyset, k)
+    end
+
+    local random_recipe = keyset[math.random(#keyset)]
+    self.order_counter.orders[#self.order_counter.orders + 1] = {
+        recipe_name = random_recipe,
+        recipe_type = Recipe:get_recipe(random_recipe),
+        expire_time = self.recipe_expire_time
+    }
+end
+
+function Game:_calculate_day_expenses()
+    local operating_cost = 8.0 + (self.day_number - 1) * 2.5
+    local tax_rate = math.min(0.22, 0.08 + (self.day_number - 1) * 0.01)
+    local tax_amount = math.max(self.cash_amount, 0) * tax_rate
+    return operating_cost, tax_amount, operating_cost + tax_amount
+end
+
+function Game:_end_day()
+    if self.day_transitioning then
+        return
+    end
+
+    self.day_transitioning = true
+
+    local operating_cost, tax_amount, total_deduction = self:_calculate_day_expenses()
+    self.cash_amount = self.cash_amount - total_deduction
+
+    local next_day_state = {
+        day_number = self.day_number + 1,
+        cash_amount = self.cash_amount
+    }
+
+    local summary = {
+        day_number = self.day_number,
+        operating_cost = operating_cost,
+        tax_amount = tax_amount,
+        total_deduction = total_deduction,
+        cash_after = self.cash_amount,
+        next_day = next_day_state.day_number
+    }
+
+    GameState.switch(DayEnd, summary, next_day_state)
+end
+
+function Game:_update_day_cycle(dt)
+    if self.paused then return end
+
+    if self.day_transitioning then
+        return
+    end
+
+    self.day_time_left = self.day_time_left - dt
+
+    self.order_spawn_timer = self.order_spawn_timer - dt
+    if self.order_spawn_timer <= 0 then
+        self:_spawn_random_order()
+        self.order_spawn_timer = self:_get_order_spawn_interval()
+    end
+
+    if self.day_time_left <= 0 then
+        self:_end_day()
     end
 end
 
 function Game:update(dt)
     Timer.update(dt)
+    self:_update_day_cycle(dt)
 
     Game:_handle_interaction()
+    self:_update_interact_prompt(dt)
 
     if Utils.gamepad_button_pressed('a') then
         self:_interact()
-    end
-
-    if Utils.gamepad_button_pressed('y') then
-        if self.player.drop_item then self.player:drop_item() end
     end
 
     Utils.update()
@@ -157,7 +346,29 @@ function Game:update(dt)
     for _, entity in ipairs(self.entities) do
         entity:update(dt)
     end
+
     self.entities:queue_free_list_update()
+    self.designmode:update(dt)
+end
+
+function Game:_update_interact_prompt(dt)
+    local target_x = self.interact_prompt.x
+    local target_y = self.interact_prompt.y
+    local target_alpha = 0.0
+
+    if self.nearest_interactable and self.distance_to_nearest < MIN_INTERACTION_DISTANCE then
+        local interact_offset = self.nearest_interactable.interact_gui_offset or Vector(0, 0)
+        target_x = self.nearest_interactable.position.x + interact_offset.x
+        target_y = self.nearest_interactable.position.y + interact_offset.y
+        target_alpha = 0.7
+    end
+
+    local position_lerp_t = math.min(1, dt * self.interact_prompt.position_lerp_speed)
+    local alpha_lerp_t = math.min(1, dt * self.interact_prompt.alpha_lerp_speed)
+
+    self.interact_prompt.x = lerp(self.interact_prompt.x, target_x, position_lerp_t)
+    self.interact_prompt.y = lerp(self.interact_prompt.y, target_y, position_lerp_t)
+    self.interact_prompt.alpha = lerp(self.interact_prompt.alpha, target_alpha, alpha_lerp_t)
 end
 
 function Game:_handle_interaction()
@@ -185,126 +396,107 @@ function Game:_handle_interaction()
         self.distance_to_nearest = math.sqrt(
         (self.nearest_interactable.position.x - self.player.position.x)^2 + 
         (self.nearest_interactable.position.y - self.player.position.y)^2)
-        if self.distance_to_nearest > self.min_interaction_distance then
+        if self.distance_to_nearest > MIN_INTERACTION_DISTANCE then
             self.nearest_interactable = nil
+            self.distance_to_nearest = math.huge
         end
+    else
+        self.distance_to_nearest = math.huge
     end
 end
 
 function Game:_interact()
     if self.nearest_interactable then
-        if self.distance_to_nearest < self.min_interaction_distance then
+        if self.distance_to_nearest < MIN_INTERACTION_DISTANCE then
             self.nearest_interactable:on_interact(self.player)
         end
-    else
-        if self.player.drop_item then self.player:drop_item() end
     end
 end
 
-
 function Game:increase_cash(amount)
     self.cash_amount = self.cash_amount + amount
+    game_gui:_spawn_cash_delta_popup(amount)
+    local cash_sound = love.audio.newSource("assets/sfx/sell_buy_item.wav", "static")
+    cash_sound:setVolume(0.7)
+    love.audio.play(cash_sound)
 end
 
 function Game:decrease_cash(amount)
     self.cash_amount = self.cash_amount - amount
+    game_gui:_spawn_cash_delta_popup(-amount)
+end
+
+function Game:apply_penalty(amount)
+    self:decrease_cash(amount)
+    -- play sound
+    local penalty_sound = love.audio.newSource("assets/sfx/caught.wav", "static")
+    love.audio.play(penalty_sound)
 end
 
 function Game:draw()
-    push:start()
+    Push:start()
 
     self:_draw_game()
 
-    push:finish()
+    Push:finish()
 end
 
 function Game:_draw_game()
-    love.graphics.draw(img_background, 0, 0)
-    love.graphics.draw(img_wall, 0, 0)
+    love.graphics.draw(assets.IMAGES.img_background, 0, 0)
+    love.graphics.draw(assets.IMAGES.img_wall, 0, 0)
 
+    self:draw_sorted_entities()
+    self.designmode:draw()
+
+    local prompt = self.interact_prompt
+    local prompt_x = prompt.x - (prompt.width / 2)
+    local prompt_y = prompt.y - (prompt.height / 2)
+
+    love.graphics.setFont(prompt.font)
+    love.graphics.setColor(0, 0, 0, 0.8 * prompt.alpha)
+    love.graphics.rectangle('fill', prompt_x, prompt_y, prompt.width, prompt.height, prompt.corner_radius, prompt.corner_radius)
+    love.graphics.setColor(1, 1, 1, prompt.alpha)
+    love.graphics.printf("E", prompt_x, prompt_y + ((prompt.height - prompt.font:getHeight()) / 2), prompt.width, "center")
+    love.graphics.setColor(1, 1, 1, 1)
+
+    game_gui:draw()
+end
+
+function Game:draw_sorted_entities()
+    -- Sort entities by z_order for proper rendering
+    local sorted_entities = {}
     for _, entity in ipairs(self.entities) do
+        table.insert(sorted_entities, entity)
+    end
+    table.sort(sorted_entities, function(a, b)
+        return (a.z_order or 0) < (b.z_order or 0)
+    end)
+
+    for _, entity in ipairs(sorted_entities) do
         entity:draw()
     end
+end
 
-    if self.distance_to_nearest < self.min_interaction_distance then
-        if self.nearest_interactable then
-            -- draw text e to interect in nearest counter
-            love.graphics.setColor(1, 1, 1, 1)
-            love.graphics.print("Press E to interact", 
-            self.nearest_interactable.position.x - 150, self.nearest_interactable.position.y - 90.0)
-        end
-    end
-
-    love.graphics.setColor(1, 1, 1, .95)
-    love.graphics.rectangle('fill', 5, 20, 350, 50)
-    
-    love.graphics.setColor(0, 0, 0, 1)
-    love.graphics.setFont(love.graphics.newFont(34))
-    love.graphics.print("Cash " .. "$ " .. string.format("%.2f", self.cash_amount), 10, 30)
-    
-    if DEBUGMODE then
-        local mouse_pos_x, mouse_pos_y = push:toGame(love.mouse.getX(), love.mouse.getY())
-        
-        love.graphics.setColor(0, 0, 0, 1)
-        love.graphics.rectangle('fill', mouse_pos_x + 25, mouse_pos_y, 320, 40)
-
-        love.graphics.setColor(1, 1, 1, 1)
-        love.graphics.print(string.format("%.2f", mouse_pos_x) .. ", " .. string.format("%.2f", mouse_pos_y), mouse_pos_x + 25, mouse_pos_y)
-    end
-    
-    -- love.graphics.setColor(0, 0, 0, 1)
-    -- love.graphics.print('Memory actually used (in Mb): ' .. string.format("%.2f", collectgarbage('count') / 1000.0) , 10, 560)
+function Game:mousepressed(x, y, button)
+    game_gui:mousepressed(x, y, button) 
 end
 
 function Game:keypressed(key)
+    self.designmode:keypressed(key)
+
     if key == 'e' then
         self:_interact()
     end
 
-    if key == 'q' then
-        self.player:drop_item()
-    end
-
     if key == 'p' then
-        if self.background_music:isPlaying() then
-            self.background_music:pause()
-        else
-            self.background_music:play()
+        if BACKGROUND_MUSIC then
+            if BACKGROUND_MUSIC:isPlaying() then
+                BACKGROUND_MUSIC:pause()
+            else
+                BACKGROUND_MUSIC:play()
+            end
         end
     end
-end
-
-function Tprint(tbl, indent)
-  if not indent then indent = 0 end
-  local toprint = string.rep(" ", indent) .. "{\r\n"
-  indent = indent + 2 
-  for k, v in pairs(tbl) do
-    toprint = toprint .. string.rep(" ", indent)
-    if (type(k) == "number") then
-      toprint = toprint .. "[" .. k .. "] = "
-    elseif (type(k) == "string") then
-      toprint = toprint  .. k ..  "= "   
-    end
-    if (type(v) == "number") then
-      toprint = toprint .. v .. ",\r\n"
-    elseif (type(v) == "string") then
-      toprint = toprint .. "\"" .. v .. "\",\r\n"
-    elseif (type(v) == "table") then
-      toprint = toprint .. Tprint(v, indent + 2) .. ",\r\n"
-    else
-      toprint = toprint .. "\"" .. tostring(v) .. "\",\r\n"
-    end
-  end
-  toprint = toprint .. string.rep(" ", indent-2) .. "}"
-  return toprint
-end
-
-function TableLength(T)
-    local count = 0
-    for _ in pairs(T) do
-        count = count + 1
-    end
-    return count
 end
 
 return Game

@@ -5,8 +5,8 @@ local DynamicEntity = require("src.dynamic_entity")
 
 local Counter = Class {
     __includes = DynamicEntity,
-    init = function(self, position, size)
-        DynamicEntity.init(self, position, size, "static")
+    init = function(self, position)
+        DynamicEntity.init(self, position, "static")
 
         self.area_radius = 40
         self.interactable = true

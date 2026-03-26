@@ -3,13 +3,21 @@ local love = require("love")
 local Class = require("lib.hump.class")
 local Vector = require("lib.hump.vector")
 local Utils = require("src.utils")
+local Timer = require("lib.hump.timer")
 
 local DynamicEntity = require("src.dynamic_entity")
 
+local BLINK_INTERVAL_SECONDS = 4
+local BLINK_DURATION_SECONDS = 0.2
+local PLAYER_FRAMES = {
+    love.graphics.newImage("assets/export/player_1.png"),
+    love.graphics.newImage("assets/export/player_2.png")
+}
+
 local Player = Class{
     __includes = DynamicEntity,
-    init = function(self, position, size, speed)
-        DynamicEntity.init(self, position, size, "dynamic")
+    init = function(self, position, speed)
+        DynamicEntity.init(self, position, "dynamic")
 
         self.speed = speed or 300
         self.area_radius = 40
@@ -17,11 +25,26 @@ local Player = Class{
         self.item_object_holding = nil
         self.name = "Player"
         self.color = {1, 1, 1, 1}
+        self.sprite_frame_index = 1
+        self.sprite = PLAYER_FRAMES[self.sprite_frame_index]
+        self.custom_shape_size = Vector(48, 24)
+        self.placement_offset = Vector(-100, 90)
+        self.z_order = 1
     end
 }
 
 function Player:load(_game)
     DynamicEntity.load(self, _game)
+
+    Timer.every(BLINK_INTERVAL_SECONDS, function()
+        self.sprite_frame_index = 2
+        self.sprite = PLAYER_FRAMES[self.sprite_frame_index]
+
+        Timer.after(BLINK_DURATION_SECONDS, function()
+            self.sprite_frame_index = 1
+            self.sprite = PLAYER_FRAMES[self.sprite_frame_index]
+        end)
+    end)
 end
 
 function Player:has_item_object()
@@ -37,6 +60,8 @@ function Player:set_item_object(item_object)
 end
 
 function Player:update(dt)
+    if self.game.paused then return end
+
     local horizontal = Utils.get_axis('a', 'd', 'leftx')
     local vertical = Utils.get_axis('w', 's', 'lefty')
     
@@ -46,6 +71,12 @@ function Player:update(dt)
         horizontal = horizontal / len
         vertical = vertical / len
     end
+
+    if horizontal > 0 then
+        self.size.x = math.abs(self.size.x) * -1
+    elseif horizontal < 0 then
+        self.size.x = math.abs(self.size.x) * 1
+    end  
 
     self.body:setLinearVelocity(horizontal * self.speed, vertical * self.speed)
 

@@ -1,6 +1,8 @@
 local Item = require("src.item")
 local Recipe = {}
 
+local assets = require("src.assets")
+
 Recipe.RECIPES_TYPES = {
     COOKED_STEAK = "COOKED_STEAK",
 
@@ -52,7 +54,7 @@ local RECIPES = {
 
     [Recipe.RECIPES_TYPES.CHEESE_SLICE] = {
         ingredients = {
-            {type = Item.TYPES.CHEESE, state = {sliced = true}}
+            {type = Item.TYPES.CHEESE}
         }
     },
 
@@ -121,6 +123,10 @@ function Recipe:get_recipes()
     return RECIPES
 end
 
+function Recipe:get_recipe(name)
+    return RECIPES[name] or nil
+end
+
 function Recipe:match_ingredient(item, ingredient)
     if item.type ~= ingredient.type then
         return false
@@ -166,13 +172,78 @@ end
 function Recipe:try_craft(contents)
     for recipe_type, recipe in pairs(RECIPES) do
         if self:matches_recipe(contents, recipe) then
-            -- print("Crafted: " .. tostring(recipe_type))
+            print("Crafted: " .. tostring(recipe_type))
 
             return recipe_type
         end
     end
 
     return nil
+end
+
+function Recipe:get_order_layer_image(layer)
+    if layer.kind == "bread_bottom" then
+        return assets.IMAGES.bread_bottom
+    end
+
+    if layer.kind == "bread_top" then
+        return assets.IMAGES.bread_top
+    end
+
+    if layer.type == "TOMATO" then
+        if layer.state and layer.state.sliced then
+            return assets.IMAGES.tomato_sliced
+        end
+        return assets.IMAGES.tomato
+    end
+
+    if layer.type == "CHEESE" then
+        return assets.IMAGES.cheese
+    end
+
+    if layer.type == "STEAK" then
+        if layer.state and layer.state.cooked then
+            return assets.IMAGES.steak_cooked
+        end
+        return assets.IMAGES.steak
+    end
+
+    return nil
+end
+
+function Recipe:build_recipe_layers(recipe)
+    if not recipe or not recipe.ingredients then
+        return {}
+    end
+
+    local layers = {}
+    local bread_count = 0
+
+    for _, ingredient in ipairs(recipe.ingredients) do
+        if ingredient.type == "BREAD" then
+            bread_count = bread_count + 1
+        end
+    end
+
+    if bread_count > 0 then
+        table.insert(layers, {kind = "bread_bottom"})
+    end
+
+    for _, ingredient in ipairs(recipe.ingredients) do
+        if ingredient.type ~= "BREAD" then
+            table.insert(layers, ingredient)
+        end
+    end
+
+    if bread_count > 1 then
+        table.insert(layers, {kind = "bread_top"})
+    end
+
+    return layers
+end
+
+function Recipe:prettify_recipe_name(recipe_type)
+    return recipe_type:gsub("_", " ")
 end
 
 return Recipe

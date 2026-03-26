@@ -9,8 +9,8 @@ local PlateObject = require("src.plate")
 
 local PlateCounter = Class {
     __includes = Counter,
-    init = function(self, position, size)
-        Counter.init(self, position, size)
+    init = function(self, position)
+        Counter.init(self, position)
         self.name = "Plate Counter"
         self.color = {.7, 0.7, .7, 1}
     end
@@ -27,19 +27,47 @@ function PlateCounter:on_interact(player)
             if #player:get_item_object().items == 0 then
                 player:get_item_object():queue_free()
                 player:get_item_object():set_object_parent(nil)
+
+                local action_sound = love.audio.newSource("assets/sfx/pop5.ogg", "static")
+                action_sound:setVolume(0.2)
+                action_sound:setPitch(0.8)
+                action_sound:play()
             else
                 print("Player is holding a plate, but it's not empty. Cannot place on counter.")
             end
             return
+        else
+            local item_obj = player:get_item_object()
+            
+            local plate = PlateObject(Vector(0, 0), Item.TYPES.PLATE)
+            plate.sprite = love.graphics.newImage("assets/export/plate.png")
+            plate.name = "Plate"
+            plate:set_object_parent(player)
+            
+            local action_sound = love.audio.newSource("assets/sfx/pop1.ogg", "static")
+            action_sound:setVolume(0.2)
+            action_sound:play()
+            
+            self.entities:add_entity(plate)
+
+            table.insert(plate.items, {
+                type = item_obj.type,
+                state = item_obj.state
+            })
+            item_obj:queue_free(self)
         end
         return
     end
     
     if not player:has_item_object() then
-        local plate = PlateObject(Vector(0, 0), {w = 20, h = 20}, Item.TYPES.PLATE)
-        plate.offset = Vector(0, -player.size.h/2 - 20)
+        local plate = PlateObject(Vector(0, 0), Item.TYPES.PLATE)
+        plate.sprite = love.graphics.newImage("assets/export/plate.png")
         plate.name = "Plate"
         plate:set_object_parent(player)
+
+        local action_sound = love.audio.newSource("assets/sfx/pop1.ogg", "static")
+        action_sound:setVolume(0.2)
+        action_sound:play()
         
         self.entities:add_entity(plate)
     end

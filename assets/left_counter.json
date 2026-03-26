@@ -1,0 +1,92 @@
+{
+    "name": "left_counter",
+    "nodes": [
+        {
+            "children": [],
+            "frame_index": 0,
+            "name": "empty_counter",
+            "node_path": "empty_counter",
+            "offset": [
+                -145.5,
+                493.0
+            ],
+            "opacity": 1.0,
+            "pivot_offset": [
+                0.0,
+                0.0
+            ],
+            "position": [
+                118,
+                0
+            ],
+            "resource_path": "export\\left_counter\\empty_counter.png",
+            "rotation": 0.0,
+            "scale": [
+                1.0,
+                1.0
+            ],
+            "tiles_x": 1,
+            "tiles_y": 1,
+            "type": "SPRITE",
+            "z": -2
+        },
+        {
+            "children": [],
+            "frame_index": 0,
+            "name": "Paint_Layer_21",
+            "node_path": "Paint_Layer_21",
+            "offset": [
+                -145.5,
+                493.0
+            ],
+            "opacity": 1.0,
+            "pivot_offset": [
+                0.0,
+                0.0
+            ],
+            "position": [
+                3,
+                33
+            ],
+            "resource_path": "export\\left_counter\\Paint_Layer_21.png",
+            "rotation": 0.0,
+            "scale": [
+                1.0,
+                1.0
+            ],
+            "tiles_x": 1,
+            "tiles_y": 1,
+            "type": "SPRITE",
+            "z": -1
+        },
+        {
+            "children": [],
+            "frame_index": 0,
+            "name": "Paint_Layer_20",
+            "node_path": "Paint_Layer_20",
+            "offset": [
+                -145.5,
+                493.0
+            ],
+            "opacity": 1.0,
+            "pivot_offset": [
+                0.0,
+                0.0
+            ],
+            "position": [
+                0,
+                29
+            ],
+            "resource_path": "export\\left_counter\\Paint_Layer_20.png",
+            "rotation": 0.0,
+            "scale": [
+                1.0,
+                1.0
+            ],
+            "tiles_x": 1,
+            "tiles_y": 1,
+            "type": "SPRITE",
+            "z": 0
+        }
+    ]
+}

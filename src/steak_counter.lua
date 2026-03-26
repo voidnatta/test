@@ -9,30 +9,37 @@ local ItemObject = require("src.item_object")
 
 local SteakCounter = Class {
     __includes = Counter,
-    init = function(self, position, size)
-        Counter.init(self, position, size)
+    init = function(self, position)
+        Counter.init(self, position)
         self.name = "Steak Counter"
     end
 }
 
 function SteakCounter:draw()
     Counter.draw(self)
-    local position_x, position_y = self.body:getPosition()
-    love.graphics.setColor(1, 1, 0.5, 1)
-    love.graphics.rectangle('fill', position_x - self.size.w/2, position_y - self.size.h/2, self.size.w, self.size.h)
-
-    -- love.graphics.setColor(1, 0.5, 0.5, 0.2)
-    -- love.graphics.circle('fill', position_x, position_y, self.area_radius)
 end
 
 function SteakCounter:on_interact(player)
     if not player:has_item_object() then
-        local steak = ItemObject(Vector(0, 0), {w = 20, h = 20}, Item.TYPES.STEAK)
-        steak.offset = Vector(0, -player.size.h/2 - 20)
+        local steak = ItemObject(Vector(0, 0), Item.TYPES.STEAK)
         steak.name = "Steak"
         steak:set_object_parent(player)
         
+        local action_sound = love.audio.newSource("assets/sfx/pop1.ogg", "static")
+        action_sound:setVolume(0.2)
+        action_sound:play()
+
         self.entities:add_entity(steak)
+    elseif player:get_item_object():is_container() then
+        if player:get_item_object():has_space() then
+            player:get_item_object():place_item({
+                type = Item.TYPES.STEAK,
+                state = {
+                    cooked = false,
+                    sliced = false
+                }
+            })
+        end
     end
 end
 

@@ -4,13 +4,14 @@ local Class = require("lib.hump.class")
 local Counter = require("src.base.counter")
 local Item = require("src.item")
 local Recipe = require("src.recipe")
+local Vector = require("lib.hump.vector")
 
 local img_empty_counter = love.graphics.newImage("assets/export/empty_counter.png")
 
 local EmptyCounter = Class {
     __includes = Counter,
-    init = function(self, position, size)
-        Counter.init(self, position, size)
+    init = function(self, position)
+        Counter.init(self, position)
 
         self.name = "Empty Counter"
         self.area_radius = 40
@@ -36,7 +37,7 @@ function EmptyCounter:on_interact(player)
             return
         end
 
-        if container.items and #container.items <= container.max_items then
+        if container.items and #container.items < container.max_items then
             table.insert(container.items, {
                 type = content.type,
                 state = content.state
@@ -44,6 +45,10 @@ function EmptyCounter:on_interact(player)
 
             content:queue_free()
             content:set_object_parent(nil)
+
+            local action_sound = love.audio.newSource("assets/sfx/pop1.ogg", "static")
+            action_sound:setVolume(0.2)
+            action_sound:play()
         else
             print("Container is not empty")
         end
@@ -55,8 +60,17 @@ function EmptyCounter:on_interact(player)
     if player:has_item_object() then
         local item_obj = player:get_item_object()
         item_obj:set_object_parent(self)
+        
+        local action_sound = love.audio.newSource("assets/sfx/pop5.ogg", "static")
+        action_sound:setVolume(0.2)
+        action_sound:setPitch(0.8)
+        action_sound:play()
+        
     elseif self:has_item_object() then
         self:get_item_object():set_object_parent(player)
+        local action_sound = love.audio.newSource("assets/sfx/pop1.ogg", "static")
+        action_sound:setVolume(0.2)
+        action_sound:play()
     else
         print("Nothing happens")
     end

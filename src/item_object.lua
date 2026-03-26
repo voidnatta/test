@@ -4,18 +4,25 @@ local Class = require("lib.hump.class")
 local Entity = require("src.base.entity")
 local Item = require("src.item")
 
+local IMAGES = {
+    [Item.TYPES.TOMATO] = love.graphics.newImage("assets/export/tomato.png"),
+    [Item.TYPES.CHEESE] = love.graphics.newImage("assets/export/cheese.png"),
+    [Item.TYPES.STEAK] = love.graphics.newImage("assets/export/steak.png"),
+    [Item.TYPES.BREAD] = love.graphics.newImage("assets/export/bread.png")
+}
+
 local ItemObject = Class{
     __includes = Entity,
-    init = function(self, position, size, type)
-        Entity.init(self, position, size)
+    init = function(self, position, type)
+        Entity.init(self, position)
         self.position = position
-        self.size = size
         self.type = type
         self.state = {
             sliced = false,
             cooked = false,
             overcooked = false
         }
+        self.z_order = 7
     end,
 }
 
@@ -28,7 +35,6 @@ function ItemObject:can_be_contained()
 end
 
 function ItemObject:set_object_parent(parent)
-    
     if self.parent then
         if self.parent.set_item_object then
             self.parent:set_item_object(nil)
@@ -39,44 +45,75 @@ function ItemObject:set_object_parent(parent)
     self.parent = parent
     if parent and parent.set_item_object then
         parent:set_item_object(self)
+        if parent.placement_offset then
+            self.offset = parent.placement_offset
+        end
     end
 end
 
 function ItemObject:on_interact(player)
-    -- print("Player interacted with item: " .. self.type) 
-    -- if player.item_holding then
-    --     print("Player is already holding an item.")
-    --     return
-    -- end
-
-    -- player.item_holding = self
-    -- self.interactable = false
-    -- self.parent = player
-    -- self.offset = {
-    --     x = 0,
-    --     y = -player.size.h/2 - 20
-    -- }
-
-    -- -- Update item position to be relative to the player
-    -- self.position.x = player.position.x + self.offset.x
-    -- self.position.y = player.position.y + self.offset.y
+    
 end
+
+local function getSizeFromImage(image) 
+    return {x = image:getWidth(), y = image:getHeight()}
+end
+
+local draw_dispatcher = {
+    [Item.TYPES.TOMATO] = function(self)
+        love.graphics.setColor(1, 1, 1, 1)
+        if not self.state.sliced then
+            love.graphics.draw(IMAGES[Item.TYPES.TOMATO], self.position.x - getSizeFromImage(IMAGES[Item.TYPES.TOMATO]).x/2, 
+            self.position.y - getSizeFromImage(IMAGES[Item.TYPES.TOMATO]).y/2, 0, 1, 1)
+        else
+            love.graphics.draw(love.graphics.newImage("assets/export/cutted_tomato.png"), self.position.x - getSizeFromImage(love.graphics.newImage("assets/export/cutted_tomato.png")).x/2, 
+            self.position.y - getSizeFromImage(love.graphics.newImage("assets/export/cutted_tomato.png")).y/2, 0, 1, 1)
+        end
+    end,
+    [Item.TYPES.CHEESE] = function(self)
+        love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.draw(IMAGES[Item.TYPES.CHEESE], self.position.x - getSizeFromImage(IMAGES[Item.TYPES.CHEESE]).x/2, 
+        self.position.y - getSizeFromImage(IMAGES[Item.TYPES.CHEESE]).y/2, 0, 1, 1)
+    end,
+    [Item.TYPES.STEAK] = function(self)
+        if not self.state.cooked then
+            love.graphics.draw(IMAGES[Item.TYPES.STEAK], self.position.x - getSizeFromImage(IMAGES[Item.TYPES.STEAK]).x/2, 
+            self.position.y - getSizeFromImage(IMAGES[Item.TYPES.STEAK]).y/2, 0, 1, 1)
+        else
+            love.graphics.draw(love.graphics.newImage("assets/export/steak_cooked.png"), self.position.x - getSizeFromImage(love.graphics.newImage("assets/export/steak_cooked.png")).x/2, 
+            self.position.y - getSizeFromImage(love.graphics.newImage("assets/export/steak_cooked.png")).y/2, 0, 1, 1)
+        end
+    end,
+    [Item.TYPES.BREAD] = function(self)
+        love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.draw(IMAGES[Item.TYPES.BREAD], self.position.x - getSizeFromImage(IMAGES[Item.TYPES.BREAD]).x/2, 
+        self.position.y - getSizeFromImage(IMAGES[Item.TYPES.BREAD]).y/2, 0, 1, 1)
+    end,
+}
 
 function ItemObject:draw()
     if self.parent then
-        -- If the item is being held, draw it relative to the parent (player)
+        -- Update position before drawing to avoid one-frame rendering at stale coords.
         self.position.x = self.parent.position.x + self.offset.x
         self.position.y = self.parent.position.y + self.offset.y
     end
-    
-    love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.rectangle('fill', self.position.x - self.size.w/2, self.position.y - self.size.h/2, self.size.w, self.size.h)
-    -- love.graphics.setColor(1, 0.5, 0.5, 0.2)
-    -- love.graphics.circle('fill', self.position.x, self.position.y, 20)
 
-    -- Draw item type text
-    love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.print(self.type, self.position.x - 25, self.position.y - 35)
+    if self.parent.override_position then
+        self.position.x = self.parent.override_position.x
+        self.position.y = self.parent.override_position.y
+    end
+
+    if draw_dispatcher[self.type] then
+        draw_dispatcher[self.type](self)
+    else
+        Entity.draw(self)
+    end
+
+    if DEBUGMODE then
+        -- Draw item type text
+        love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.print(self.type, self.position.x - 25, self.position.y - 35)
+    end
 end
 
 return ItemObject
