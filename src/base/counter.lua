@@ -1,6 +1,7 @@
 local love = require("love")
 
 local Class = require("lib.hump.class")
+local Vector = require("lib.hump.vector")
 local DynamicEntity = require("src.dynamic_entity")
 
 local Counter = Class {
@@ -11,6 +12,7 @@ local Counter = Class {
         self.area_radius = 40
         self.interactable = true
         self.item_object_holding = nil
+        self.item_anchor_offset = Vector(0, 0)
     end
 }
 
@@ -24,6 +26,10 @@ end
 
 function Counter:set_item_object(item_object)
     self.item_object_holding = item_object
+end
+
+function Counter:get_child_anchor_offset(_child)
+    return self.item_anchor_offset
 end
 
 function Counter:draw()

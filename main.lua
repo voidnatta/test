@@ -9,39 +9,39 @@ local DayEnd = require("scenes.day_end")
 
 BACKGROUND_MUSIC = nil
 
-function PlayBackgroundMusic()
-	if not BACKGROUND_MUSIC then
-		return
-	end
-
-	if not BACKGROUND_MUSIC:isPlaying() then
-		BACKGROUND_MUSIC:play()
-	end
-end
-
-function StopBackgroundMusic()
-	if not BACKGROUND_MUSIC then
-		return
-	end
-
-	if BACKGROUND_MUSIC:isPlaying() then
-		BACKGROUND_MUSIC:stop()
-	end
-end
-
-local function _handle_background_music()
-	BACKGROUND_MUSIC = love.audio.newSource("music/hotel_2.mp3", "stream")
-	BACKGROUND_MUSIC:setVolume(0.2)
-	BACKGROUND_MUSIC:setLooping(true)
-	PlayBackgroundMusic()
-end
-
 function love.load()
 	GameState.registerEvents()
 	_handle_background_music()
 	GameState.switch(Game, {
-		show_play_screen = true
+        show_play_screen = true
 	})
+end
+
+function PlayBackgroundMusic()
+    if not BACKGROUND_MUSIC then
+        return
+    end
+
+    if not BACKGROUND_MUSIC:isPlaying() then
+        BACKGROUND_MUSIC:play()
+    end
+end
+
+function StopBackgroundMusic()
+    if not BACKGROUND_MUSIC then
+        return
+    end
+
+    if BACKGROUND_MUSIC:isPlaying() then
+        BACKGROUND_MUSIC:stop()
+    end
+end
+
+_G._handle_background_music = function ()
+    BACKGROUND_MUSIC = love.audio.newSource("music/hotel_2.mp3", "stream")
+    BACKGROUND_MUSIC:setVolume(0.2)
+    BACKGROUND_MUSIC:setLooping(true)
+    PlayBackgroundMusic()
 end
 
 function Tprint(tbl, indent)

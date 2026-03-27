@@ -1,7 +1,7 @@
 local love = require("love")
 
-DEBUGMODE = true
-DESIGNMODE = true
+DEBUGMODE = false
+DESIGNMODE = false
 
 GAME_WIDTH, GAME_HEIGHT = 1440, 1080 --fixed game resolution
 WINDOW_WIDTH, WINDOW_HEIGHT = 1440, 1080
@@ -21,6 +21,7 @@ local Utils = require("src.utils")
 local Entities = require("src.systems.entities")
 local DesignMode = require("src.debug.designmode")
 local assets = require("src.assets")
+local mobile_joystick = require("src.gui.mobile_joystick")
 
 local game_gui = require("src.gui.game_gui")
 
@@ -45,6 +46,8 @@ local Recipe = require("src.recipe")
 
 local Game = {}
 
+Push:setupScreen(GAME_WIDTH, GAME_HEIGHT, WINDOW_WIDTH, WINDOW_HEIGHT, {fullscreen = false, resizable = false, vsync = true})
+
 local function lerp(current, target, t)
     return current + (target - current) * t
 end
@@ -53,7 +56,6 @@ function Game:init(initial_state)
     love.physics.setMeter(32)
     love.graphics.setFont(love.graphics.newFont(34))
 
-    Push:setupScreen(GAME_WIDTH, GAME_HEIGHT, WINDOW_WIDTH, WINDOW_HEIGHT, {fullscreen = false})
     
     self.world = love.physics.newWorld(0, 0, true)
     self.entities = Entities.new(self, self.world)
@@ -135,14 +137,9 @@ function Game:_spawn_game_entities()
     tomato_counter.sprite = assets.IMAGES.img_tomato_counter
     tomato_counter.z_order = 4
 
-    local slicing_counter = SlicingCounter(Vector(664.00, 304), {w = 152, h = 250})
-    slicing_counter.sprite = assets.IMAGES.img_slicer_counter
-    slicing_counter.override_position = Vector(658, 262)
-    slicing_counter.custom_shape_size = Vector(100, 10)
-
-    local empty_counter = EmptyCounter(Vector(945, 304), {w = 152, h = 250})
+    local empty_counter = EmptyCounter(Vector(945, 302), {w = 152, h = 250})
     empty_counter.sprite = assets.IMAGES.img_empty_counter
-    empty_counter.override_position = Vector(945, 265)
+    empty_counter.item_anchor_offset = Vector(0, -39)
     empty_counter.custom_shape_size = Vector(100, 10)
 
     local empty_counter_bottom = EmptyCounter(Vector(857.00, 1007.00), {w = 152, h = 250})
@@ -156,17 +153,28 @@ function Game:_spawn_game_entities()
     local empty_counter_bottom3 = EmptyCounter(Vector(688.00, 1007.00), {w = 152, h = 250})
     empty_counter_bottom3.placement_offset = Vector(0, -70)
 
+    local slicing_counter = SlicingCounter(Vector(664.00, 304), {w = 152, h = 250})
+    slicing_counter.sprite = assets.IMAGES.img_slicer_counter
+    slicing_counter.item_anchor_offset = Vector(-6, -42)
+    slicing_counter.custom_shape_size = Vector(100, 10)
+
     local plate_counter = PlateCounter(Vector(805, 304), {w = 152, h = 250})
     plate_counter.sprite = assets.IMAGES.img_plate_counter
     plate_counter.custom_shape_size = Vector(100, 10)
+
+    local cheese_counter = CheeseCounter(Vector(353, 271), {w = assets.IMAGES.img_cheese_counter:getWidth(), h = assets.IMAGES.img_cheese_counter:getHeight()})
+    cheese_counter.sprite = assets.IMAGES.img_cheese_counter
+    cheese_counter.custom_shape_size = Vector(100, 10)
     
     local steak_counter = SteakCounter(Vector(508.45, 271), {w = assets.IMAGES.img_steak_counter:getWidth(), h = assets.IMAGES.img_steak_counter:getHeight()})
     steak_counter.sprite = assets.IMAGES.img_steak_counter
     steak_counter.custom_shape_size = Vector(100, 10)
 
-    self.order_counter = OrderCounter(Vector(1090, 252), {w = assets.IMAGES.img_order_counter:getWidth(), h = assets.IMAGES.img_order_counter:getHeight()})
+    self.order_counter = OrderCounter(Vector(1090, 350), {w = assets.IMAGES.img_order_counter:getWidth(), h = assets.IMAGES.img_order_counter:getHeight()})
     self.order_counter.sprite = assets.IMAGES.img_order_counter
     self.order_counter.custom_shape_size = Vector(100, 10)
+    self.order_counter.offset = Vector(0, -98)
+    self.order_counter.interact_gui_offset = Vector(0, -50)
 
     local left_counter = Entity(Vector(assets.IMAGES.img_left_counter:getWidth() / 2, assets.IMAGES.img_left_counter:getHeight() / 2),
     {w = assets.IMAGES.img_left_counter:getWidth(), h = assets.IMAGES.img_left_counter:getHeight()})
@@ -185,15 +193,10 @@ function Game:_spawn_game_entities()
     bread_counter.sprite = assets.IMAGES.img_bread_counter
     bread_counter.z_order = 2
 
-    local cheese_counter = CheeseCounter(Vector(353, 271), {w = assets.IMAGES.img_cheese_counter:getWidth(), h = assets.IMAGES.img_cheese_counter:getHeight()})
-    cheese_counter.sprite = assets.IMAGES.img_cheese_counter
-    cheese_counter.custom_shape_size = Vector(100, 10)
-
     local cooking_counter = CookingCounter(Vector(528.00, 1007.00), {w = assets.IMAGES.img_cook_counter:getWidth(), h = assets.IMAGES.img_cook_counter:getHeight()})
     cooking_counter.sprite = assets.IMAGES.img_cook_counter
     cooking_counter.z_order = 6
-    cooking_counter.override_position = Vector(528, 1005)
-    -- cooking_counter.interact_gui_offset = Vector(-30, 25)
+    cooking_counter.item_anchor_offset = Vector(0, -2)
 
     -- collisions
     local bottom_center = DynamicEntity(Vector(GAME_WIDTH / 2, GAME_HEIGHT - 200), "static")
@@ -332,11 +335,12 @@ end
 function Game:update(dt)
     Timer.update(dt)
     self:_update_day_cycle(dt)
+    mobile_joystick:update(dt)
 
     Game:_handle_interaction()
     self:_update_interact_prompt(dt)
 
-    if Utils.gamepad_button_pressed('a') then
+    if Utils.gamepad_button_pressed('a') or mobile_joystick:consume_interact_pressed() then
         self:_interact()
     end
 
@@ -460,6 +464,12 @@ function Game:_draw_game()
     love.graphics.setColor(1, 1, 1, 1)
 
     game_gui:draw()
+    mobile_joystick:draw()
+    if DEBUGMODE then
+        love.graphics.setColor(1, 0, 0, 1)
+        love.graphics.print("FPS: " .. tostring(love.timer.getFPS()), 10, 10)
+        love.graphics.setColor(1, 1, 1, 1)
+    end
 end
 
 function Game:draw_sorted_entities()
@@ -477,8 +487,33 @@ function Game:draw_sorted_entities()
     end
 end
 
+function Game:touchpressed(id, x, y, dx, dy, pressure)
+    mobile_joystick:touchpressed(id, x, y, dx, dy, pressure)
+end
+
+function Game:touchmoved(id, x, y, dx, dy, pressure)
+    mobile_joystick:touchmoved(id, x, y, dx, dy, pressure)
+end
+
+function Game:touchreleased(id, x, y)
+    mobile_joystick:touchreleased(id, x, y)
+end
+
+function Game:resize(w, h)
+    -- Push:resize(w, h)
+end
+
 function Game:mousepressed(x, y, button)
     game_gui:mousepressed(x, y, button) 
+    mobile_joystick:mousepressed(x, y, button)
+end
+
+function Game:mousemoved(x, y, dx, dy, istouch)
+    mobile_joystick:mousemoved(x, y, dx, dy, istouch)
+end
+
+function Game:mousereleased(x, y, button)
+    mobile_joystick:mousereleased(x, y, button)
 end
 
 function Game:keypressed(key)

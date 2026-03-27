@@ -36,12 +36,12 @@ local Entity = Class{
     draw = function(self)
         if self.sprite then
             love.graphics.setColor(1, 1, 1, 1)
-            love.graphics.draw(self.sprite, self.position.x - self.size.x / 2, self.position.y - self.size.y / 2, 0.0, 
+            love.graphics.draw(self.sprite, self.position.x - self.size.x / 2 + self.offset.x, self.position.y - self.size.y / 2 + self.offset.y, 0.0, 
             self.size.x / self.sprite:getWidth(), self.size.y / self.sprite:getHeight())
         else
             if not DEBUGMODE then return end
             love.graphics.setColor(self.color)
-            love.graphics.rectangle('fill', self.position.x - self.size.x/2, self.position.y - self.size.y/2, self.size.x, self.size.y)
+            love.graphics.rectangle('fill', self.position.x - self.size.x/2 + self.offset.x, self.position.y - self.size.y/2 + self.offset.y, self.size.x, self.size.y)
         end
     end;
 

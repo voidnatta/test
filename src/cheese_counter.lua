@@ -32,6 +32,16 @@ function CheeseCounter:on_interact(player)
         action_sound:play()
 
         self.entities:add_entity(cheese)
+    elseif player:get_item_object():is_container() then
+        if player:get_item_object():has_space() then
+            player:get_item_object():place_item({
+                type = Item.TYPES.CHEESE,
+                state = {
+                    cooked = false,
+                    sliced = false
+                }
+            })
+        end
     end
 end
 

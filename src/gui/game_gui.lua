@@ -32,7 +32,7 @@ local CASH_GUI_HEIGHT = 70
 local CASH_DELTA_FLOAT_DISTANCE = 42
 local CASH_DELTA_FLOAT_DURATION = 1.0
 
-local ORDER_CARD_WIDTH = 250
+local ORDER_CARD_WIDTH = 348
 local ORDER_CARD_HEIGHT = 86
 local ORDER_CARD_MARGIN = 12
 local ORDER_CARD_X = 25
@@ -99,7 +99,7 @@ function game_gui:_draw_order_cards()
         return
     end
 
-    local recipes = Recipe:get_recipes()
+    -- local recipes = Recipe:get_recipes()
 
     for i, order in ipairs(self.game.order_counter.orders) do
         local card_x = ORDER_CARD_X + (i - 1) * (ORDER_CARD_WIDTH + ORDER_CARD_MARGIN) + self.order_gui_offset.x
@@ -122,7 +122,6 @@ function game_gui:_draw_order_cards()
         local icon_gap = 4
         local available_width = ORDER_CARD_WIDTH - 16
         local max_icons = math.max(1, math.floor((available_width + icon_gap) / (ORDER_ICON_SIZE + icon_gap)))
-
 
         for layer_index, layer in ipairs(layers) do
             if layer_index > max_icons then
@@ -150,8 +149,6 @@ function game_gui:_draw_order_cards()
                     scale,
                     scale
                 )
-
-                
             end
         end
         if self.game.can_get_new_order then
@@ -266,6 +263,10 @@ end
 
 function game_gui:mousepressed(x, y, button)
     x, y = Push:toGame(x, y)
+    if not x or not y then
+        return
+    end
+
     local offset_x, offset_y = self.play_button.width * 0.5, self.play_button.height * 0.5
     local center_x = self.play_button.x - offset_x
     local center_y = self.play_button.y - offset_y

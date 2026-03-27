@@ -19,7 +19,7 @@ local PlateObject = Class{
     init = function(self, position)
         ItemObject.init(self, position, Item.TYPES.PLATE)
         self.items = {}
-        self.max_items = 5
+        self.max_items = 6
         self.color = {0.8, 0.8, 0.8, 1} -- Light gray
     end
 }
@@ -119,6 +119,15 @@ function PlateObject:draw()
             (self.position.y - image:getHeight() / 2) - (i - 1) * offset) -- Stack layers with a small offset
         end
     end
+
+    for i = 0, #self.items do
+        love.graphics.setFont(love.graphics.newFont(24))
+        love.graphics.setColor(0, 0, 0, 0.6)
+        love.graphics.rectangle('fill', self.position.x + 25, self.position.y - 10, 50, 45, 10, 10)
+        
+        love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.printf(#self.items .. "/" .. self.max_items, self.position.x, self.position.y, 100, "center")
+    end 
 end
 
 return PlateObject

@@ -3,6 +3,7 @@ local love = require("love")
 local Class = require("lib.hump.class")
 local Entity = require("src.base.entity")
 local Item = require("src.item")
+local Vector = require("lib.hump.vector")
 
 local IMAGES = {
     [Item.TYPES.TOMATO] = love.graphics.newImage("assets/export/tomato.png"),
@@ -23,6 +24,8 @@ local ItemObject = Class{
             overcooked = false
         }
         self.z_order = 7
+        self.anchor_offset = Vector(0, 0)
+        self.local_draw_offset = Vector(0, 0)
     end,
 }
 
@@ -45,10 +48,22 @@ function ItemObject:set_object_parent(parent)
     self.parent = parent
     if parent and parent.set_item_object then
         parent:set_item_object(self)
-        if parent.placement_offset then
-            self.offset = parent.placement_offset
+        if parent.get_child_anchor_offset then
+            self.anchor_offset = parent:get_child_anchor_offset(self) or Vector(0, 0)
+        elseif parent.item_anchor_offset then
+            self.anchor_offset = parent.item_anchor_offset
+        elseif parent.placement_offset then
+            self.anchor_offset = parent.placement_offset
+        else
+            self.anchor_offset = Vector(0, 0)
         end
+    else
+        self.anchor_offset = Vector(0, 0)
     end
+end
+
+function ItemObject:set_local_draw_offset(offset)
+    self.local_draw_offset = offset or Vector(0, 0)
 end
 
 function ItemObject:on_interact(player)
@@ -94,13 +109,8 @@ local draw_dispatcher = {
 function ItemObject:draw()
     if self.parent then
         -- Update position before drawing to avoid one-frame rendering at stale coords.
-        self.position.x = self.parent.position.x + self.offset.x
-        self.position.y = self.parent.position.y + self.offset.y
-    end
-
-    if self.parent.override_position then
-        self.position.x = self.parent.override_position.x
-        self.position.y = self.parent.override_position.y
+        self.position.x = self.parent.position.x + self.anchor_offset.x + self.local_draw_offset.x
+        self.position.y = self.parent.position.y + self.anchor_offset.y + self.local_draw_offset.y
     end
 
     if draw_dispatcher[self.type] then

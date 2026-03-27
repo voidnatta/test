@@ -14,7 +14,7 @@ local function get_layout()
     local button_w = 280
     local button_h = 64
     local button_x = (sw - button_w) * 0.5
-    local button_y = panel_y + 320
+    local button_y = panel_y + 350
 
     return {
         sw = sw,

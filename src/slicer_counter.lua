@@ -28,7 +28,7 @@ function SlicerCounter:on_interact(player)
         return
     end
 
-    if player:has_item_object() then
+    if player:has_item_object() and not self:has_item_object() then
         local item_obj = player:get_item_object()
 
         if item_obj:can_be_contained() then
@@ -66,6 +66,25 @@ function SlicerCounter:on_interact(player)
         end
 
     elseif self:has_item_object() then
+        if player:has_item_object() then
+            if player:get_item_object():is_container() then
+                if player:get_item_object():has_space() and
+                self:get_item_object().type ~= Item.TYPES.PLATE then
+                    player:get_item_object():place_item({
+                        type = self:get_item_object().type,
+                        state = self:get_item_object().state
+                    })
+
+                    self:get_item_object():set_object_parent(nil)
+                    self:get_item_object():queue_free()
+                end
+                return
+            else
+                print("Player is holding an item that cannot contain sliced items.")
+                return
+            end
+        end
+        
         self:get_item_object():set_object_parent(player)
 
         local slicing_sound = love.audio.newSource("assets/sfx/qubodupItemHandling1.wav", "static")

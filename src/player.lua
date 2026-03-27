@@ -4,6 +4,7 @@ local Class = require("lib.hump.class")
 local Vector = require("lib.hump.vector")
 local Utils = require("src.utils")
 local Timer = require("lib.hump.timer")
+local mobile_joystick = require("src.gui.mobile_joystick")
 
 local DynamicEntity = require("src.dynamic_entity")
 
@@ -64,6 +65,14 @@ function Player:update(dt)
 
     local horizontal = Utils.get_axis('a', 'd', 'leftx')
     local vertical = Utils.get_axis('w', 's', 'lefty')
+
+    horizontal = horizontal + mobile_joystick:get_axis_x()
+    vertical = vertical + mobile_joystick:get_axis_y()
+
+    if horizontal > 1 then horizontal = 1 end
+    if horizontal < -1 then horizontal = -1 end
+    if vertical > 1 then vertical = 1 end
+    if vertical < -1 then vertical = -1 end
     
     -- normalize player movement
     local len = math.sqrt(horizontal * horizontal + vertical * vertical)
