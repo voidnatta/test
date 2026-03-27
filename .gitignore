@@ -1,3 +1,6 @@
 node_modules/
 game/
 /.vscode
+CounterMania/
+run.sh
+build_web.ps1
